@@ -111,7 +111,7 @@ bool ProcessList::update()
 {
 	std::lock_guard<std::recursive_mutex> guard(m_mutex);
 
-	std::vector<std::shared_ptr<Process>> list;
+	std::vector<ProcessListItem> list;
 
 	// Get process list
 	if (!Process::queryAllProcesses(list, [this](Process& p) {
@@ -166,7 +166,7 @@ bool ProcessList::changed()
 	return m_dirty;
 }
 
-void ProcessList::fill(std::vector<std::shared_ptr<Process>>& output)
+void ProcessList::fill(std::vector<ProcessListItem>& output)
 {
 	std::lock_guard<std::recursive_mutex> guard(m_mutex);
 

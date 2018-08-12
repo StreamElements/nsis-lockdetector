@@ -7,6 +7,8 @@
 #include <mutex>
 #include <thread>
 
+typedef std::shared_ptr<Process> ProcessListItem;
+
 class ProcessList
 {
 public:
@@ -16,7 +18,7 @@ public:
 	void addPattern(const TCHAR const* pattern);
 
 	bool changed();
-	void fill(std::vector<std::shared_ptr<Process>>& output);
+	void fill(std::vector<ProcessListItem>& output);
 
 private:
 	bool match(const TCHAR const* path);
@@ -25,7 +27,7 @@ private:
 
 private:
 	bool m_dirty;
-	std::map<DWORD, std::shared_ptr<Process>> m_processMap;
+	std::map<DWORD, ProcessListItem> m_processMap;
 	std::vector<std::wstring> m_patternList;
 	std::recursive_mutex m_mutex;
 	std::thread m_thread;
