@@ -258,7 +258,7 @@
   <ItemGroup>
     <ClCompile Include="Process.cpp" />
     <ClCompile Include="ProcessList.cpp" />
-    <ClCompile Include="pslist.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release Unicode|Win32'">Create</PrecompiledHeader>
@@ -270,6 +270,9 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="pslist.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

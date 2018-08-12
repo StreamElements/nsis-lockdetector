@@ -6,7 +6,9 @@ Process::Process(const DWORD id) :
 	m_id(id),
 	m_handle(0),
 	m_icon(0),
-	m_imagePath(0)
+	m_imagePath(0),
+	m_mainWindowTitle(0),
+	m_mainWindowHandle(0)
 {
 	m_handle = OpenProcess(
 		PROCESS_TERMINATE | 
@@ -51,6 +53,10 @@ Process::~Process()
 
 	if (m_imagePath) {
 		delete[] m_imagePath;
+	}
+
+	if (m_mainWindowTitle) {
+		delete[] m_mainWindowTitle;
 	}
 
 	if (m_icon) {
@@ -121,4 +127,63 @@ const bool Process::queryAllProcesses(std::vector<std::shared_ptr<Process>>& out
 		output,
 		[](Process&) -> bool { return true; }
 	);
+}
+
+const HWND Process::mainWindowHandle()
+{
+	if (!m_mainWindowHandle) {
+		std::vector <HWND> vWindows;
+
+		HWND hwnd = NULL;
+
+		do
+		{
+			hwnd = FindWindowEx(GetDesktopWindow(), hwnd, NULL, NULL);
+
+			if (IsWindowVisible(hwnd)) {
+				DWORD dwPID = 0;
+				GetWindowThreadProcessId(hwnd, &dwPID);
+				if (dwPID == id()) {
+					vWindows.push_back(hwnd);
+				}
+			}
+		} while (hwnd != NULL);
+
+		if (vWindows.size() > 0) {
+			m_mainWindowHandle = vWindows[0];
+		}
+	}
+
+	return m_mainWindowHandle;
+}
+
+const TCHAR* const Process::mainWindowTitle()
+{
+	if (!m_mainWindowTitle) {
+		HWND hwnd = mainWindowHandle();
+
+		if (hwnd) {
+			const size_t increment = 32;
+			size_t bufLen = 256;
+			TCHAR* buf = new TCHAR[bufLen];
+
+			size_t textLen = GetWindowText(hwnd, buf, bufLen);
+			while (textLen >= bufLen - 1) {
+				delete[] buf;
+				bufLen += increment;
+				buf = new TCHAR[bufLen];
+
+				textLen = GetWindowText(hwnd, buf, bufLen);
+			}
+
+			if (textLen > 0) {
+				m_mainWindowTitle = buf;
+			}
+			else {
+				delete[] buf;
+			}
+		}
+	}
+
+	return m_mainWindowTitle;
 }

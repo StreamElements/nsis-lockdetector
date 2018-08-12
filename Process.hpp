@@ -20,6 +20,8 @@ public:
 	const HANDLE handle() const { return m_handle; }
 	const TCHAR* const path() const { return m_imagePath; }
 	const HICON icon();
+	const HWND mainWindowHandle();
+	const TCHAR* const mainWindowTitle();
 
 	bool compare(Process& other) { return m_id == other.m_id; }
 
@@ -43,6 +45,8 @@ private:
 	DWORD m_id;
 	HANDLE m_handle;
 	TCHAR* m_imagePath;
+	TCHAR* m_mainWindowTitle;
 	HICON m_icon;
+	HWND m_mainWindowHandle;
 };
 
