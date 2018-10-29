@@ -1,0 +1,64 @@
+version: '{build}'
+branches:
+  only:
+  - master
+image: Previous Visual Studio 2017
+configuration: Release
+clone_folder: c:\local\source
+init:
+- ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+environment:
+  AWS_ACCESS_KEY_ID: AKIAJESHQW2DGHPN57KQ
+  AWS_SECRET_ACCESS_KEY:
+    secure: lhOyqT4/E0Oqv8BOQR81rx/SweOIbDELTYW7iJTqRz5shmkZ8eXMCgFzcIuXyvpB
+install:
+- cmd: >-
+
+    if not exist c:\local md c:\local
+
+    if not exist c:\local\source md c:\local\source
+
+    if not exist c:\local\source\nsis md c:\local\source\nsis
+
+    if not exist c:\local\source\nsis\Contrib md c:\local\source\nsis\Contrib
+
+    cd /d c:\local\source\nsis\Contrib
+
+    git clone https://github.com/StreamElements/nsis-lockdetector.git
+
+build_script:
+- cmd: >-
+
+    cd /d c:\local\source\nsis\Contrib\nsis-lockdetector
+
+    msbuild "/p:Configuration=Release;Platform=Win32" /t:Clean;Rebuild
+
+    msbuild "/p:Configuration=Release;Platform=x64" /t:Clean;Rebuild
+
+    msbuild "/p:Configuration=Release Unicode;Platform=Win32" /t:Clean;Rebuild
+
+    msbuild "/p:Configuration=Release Unicode;Platform=x64" /t:Clean;Rebuild
+
+test: off
+artifacts:
+- path: nsis\plugins\x64-ansi\NSISLockDetector.dll
+  name: x64-ansi
+- path: nsis\plugins\x64-unicode\NSISLockDetector.dll
+  name: x64-unicode
+- path: nsis\plugins\x86-ansi\NSISLockDetector.dll
+  name: x86-ansi
+- path: nsis\plugins\x86-unicode\NSISLockDetector.dll
+  name: x86-unicode
+deploy:
+- provider: S3
+  access_key_id: AKIAJESHQW2DGHPN57KQ
+  secret_access_key:
+    secure: lhOyqT4/E0Oqv8BOQR81rx/SweOIbDELTYW7iJTqRz5shmkZ8eXMCgFzcIuXyvpB
+  bucket: obs-builds
+  folder: nsis-lockdetector/latest/windows
+  artifact: x64-ansi,x64-unicode,x86-ansi,x86-unicode
+  max_error_retry: 5
+  on:
+    branch: master
+on_success:
+- cmd: echo.All done!
