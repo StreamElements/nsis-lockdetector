@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <memory>
 
 class Process
 {
@@ -40,13 +41,13 @@ public:
 
 	static const bool queryAllProcesses(std::vector<std::shared_ptr<Process>>& output, std::function<bool(Process&)> filter);
 	static const bool queryAllProcesses(std::vector<std::shared_ptr<Process>>& output);
+	static const bool queryAllProcesses(std::vector<std::wstring>& lockedFiles, std::vector<std::shared_ptr<Process>>& output);
 
 private:
-	DWORD m_id;
-	HANDLE m_handle;
-	TCHAR* m_imagePath;
-	TCHAR* m_mainWindowTitle;
-	HICON m_icon;
-	HWND m_mainWindowHandle;
+	DWORD m_id = 0;
+	HANDLE m_handle = INVALID_HANDLE_VALUE;
+	TCHAR* m_imagePath = nullptr;
+	HICON m_icon = (HICON)INVALID_HANDLE_VALUE;
+	TCHAR* m_mainWindowTitle = nullptr;
+	HWND m_mainWindowHandle = (HWND)INVALID_HANDLE_VALUE;
 };
-

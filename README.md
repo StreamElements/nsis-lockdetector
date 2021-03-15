@@ -27,21 +27,31 @@
 7. Usage (NSIS script):
 
 	> SetPluginUnload alwaysoff
+	>
+	> ;;; Make sure to minimize the list of files to check
 	> 
-    > NSISLockDetector::AddWildcardPattern "$INSTDIR\*"
+	> ;;; since RestartManager is slow and gets slower the
 	> 
-    > NSISLockDetector::Dialog
+	> ;;; more resources it has to check.
 	> 
-    > Pop $R0
+	> NSISLockDetector::AddWildcardPattern "$INSTDIR\*.exe"
 	> 
-    > StrCmp "$R0" "OK" programs_ok programs_error
+	> NSISLockDetector::AddWildcardPattern "$INSTDIR\*.dll"
+	> 
+	> NSISLockDetector::SetMode "restartmanager" ;;; default = "pslist"
+	> 
+	> NSISLockDetector::Dialog
+	> 
+	> Pop $R0
+	> 
+	> StrCmp "$R0" "OK" programs_ok programs_error
 	> 
 	> 
 	> 
 	> programs_error:
 	> 
 	> 	Abort
-    > 
+	> 
 	> 
 	> 
 	> programs_ok:

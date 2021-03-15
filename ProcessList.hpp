@@ -9,20 +9,31 @@
 
 typedef std::shared_ptr<Process> ProcessListItem;
 
+enum ProcessListMode
+{
+	PsList,
+	RestartManager
+};
+
 class ProcessList
 {
 public:
-	ProcessList();
+	ProcessList(ProcessListMode mode);
 	~ProcessList();
 
-	void addPattern(const TCHAR const* pattern);
+	void addPattern(const TCHAR* pattern);
 
 	bool changed();
 	void fill(std::vector<ProcessListItem>& output);
 
 private:
-	bool match(const TCHAR const* path);
+	bool match(const TCHAR* path);
 	bool update();
+
+	bool getProcessList(std::vector<ProcessListItem>& list);
+	bool getProcessListFromPsList(std::vector<ProcessListItem>& list);
+	bool getProcessListFromRestartManager(std::vector<ProcessListItem>& list);
+
 	static void thread(ProcessList* self);
 
 private:
@@ -39,4 +50,6 @@ private:
 	std::mutex m_exit_event_mutex;
 
 	bool m_running;
+
+	ProcessListMode m_mode;
 };
