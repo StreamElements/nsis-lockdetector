@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ProcessList.hpp"
-#include <iostream>
+#include <filesystem>
+#include <windows.h>
 
 // Function: Search using wildcards.
 //
@@ -39,10 +40,25 @@ starCheck:
 	goto loopStart;
 }
 
+static void GetFilesByWildcard(std::wstring rootPath, std::wstring wildcard, std::vector<std::wstring>& output)
+{
+	for (auto& entry :
+		std::filesystem::recursive_directory_iterator(
+			rootPath)) {
 
-ProcessList::ProcessList() :
+		if (!entry.is_regular_file())
+			continue;
+
+		if (wildcmp(wildcard.c_str(), entry.path().wstring().c_str())) {
+			output.push_back(entry.path().wstring());
+		}
+	}
+}
+
+ProcessList::ProcessList(ProcessListMode mode) :
 	m_dirty(false),
-	m_running(true)
+	m_running(true),
+	m_mode(mode)
 {
 	update();
 
@@ -70,7 +86,7 @@ ProcessList::~ProcessList()
 	}
 }
 
-void ProcessList::addPattern(const TCHAR const * pattern)
+void ProcessList::addPattern(const TCHAR* pattern)
 {
 	std::lock_guard<std::recursive_mutex> guard(m_mutex);
 
@@ -84,7 +100,7 @@ void ProcessList::addPattern(const TCHAR const * pattern)
 	update();
 }
 
-bool ProcessList::match(const TCHAR const* path)
+bool ProcessList::match(const TCHAR* path)
 {
 	if (!path) {
 		return false;
@@ -109,16 +125,13 @@ bool ProcessList::match(const TCHAR const* path)
 
 bool ProcessList::update()
 {
-	std::lock_guard<std::recursive_mutex> guard(m_mutex);
-
 	std::vector<ProcessListItem> list;
 
-	// Get process list
-	if (!Process::queryAllProcesses(list, [this](Process& p) {
-		return match(p.path());
-	})) {
+	if (!getProcessList(list)) {
 		return false;
 	}
+
+	std::lock_guard<std::recursive_mutex> guard(m_mutex);
 
 	// Add missing processes to process map by ID
 	for (auto p : list) {
@@ -146,13 +159,71 @@ bool ProcessList::update()
 	return true;
 }
 
+bool ProcessList::getProcessList(std::vector<ProcessListItem>& list)
+{
+	if (m_mode == RestartManager)
+		return getProcessListFromRestartManager(list);
+	else
+		return getProcessListFromPsList(list);
+}
+
+bool ProcessList::getProcessListFromPsList(std::vector<ProcessListItem>& list)
+{
+	// Get process list
+	return Process::queryAllProcesses(list, [this](Process& p) {
+		return match(p.path());
+	});
+}
+
+bool ProcessList::getProcessListFromRestartManager(std::vector<ProcessListItem>& list)
+{
+	std::vector<std::wstring> lockedFiles;
+
+	std::vector<std::wstring> patternList;
+
+	{
+		std::lock_guard<std::recursive_mutex> guard(m_mutex);
+
+		patternList = m_patternList;
+	}
+
+	for (auto& pattern : patternList) {
+		auto full = std::filesystem::absolute(pattern);
+		std::wstring filename = full.filename().wstring();
+		std::wstring parentDir = full.parent_path().wstring();
+
+		GetFilesByWildcard(parentDir, filename, lockedFiles);
+	}
+
+	return Process::queryAllProcesses(lockedFiles, list);
+}
+
 void ProcessList::thread(ProcessList* self)
 {
-	while (self->m_running) {
-		self->update();
+	{
+		// Warmup after initial update()
 
 		std::unique_lock<std::mutex> lock(self->m_event_mutex);
-		std::cv_status status = self->m_event.wait_for(lock, std::chrono::milliseconds(1000));
+		std::cv_status status = self->m_event.wait_for(lock, std::chrono::milliseconds(5000));
+	}
+
+	while (self->m_running) {
+		auto start = std::chrono::system_clock::now();
+		self->update();
+		auto end = std::chrono::system_clock::now();
+
+		std::chrono::milliseconds msec =
+			std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+		msec *= 5;
+
+		if (msec.count() > 10000)
+			msec = std::chrono::milliseconds(10000);
+		else if (msec.count() < 1000)
+			msec = std::chrono::milliseconds(1000);
+
+		std::unique_lock<std::mutex> lock(self->m_event_mutex);
+		std::cv_status status = self->m_event.wait_for(lock, msec);
 	}
 
 	std::unique_lock<std::mutex> lock(self->m_exit_event_mutex);

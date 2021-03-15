@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "Process.hpp"
 
+#include <RestartManager.h>
+#include <string>
+#include <vector>
+#include <set>
 
 Process::Process(const DWORD id) :
 	m_id(id),
@@ -107,7 +111,7 @@ const bool Process::queryAllProcesses(std::vector<std::shared_ptr<Process>>& out
 	}
 
 	if (result) {
-		for (int i = 0; i < bufLen / sizeof(DWORD); ++i) {
+		for (size_t i = 0; i < bufLen / sizeof(DWORD); ++i) {
 			std::shared_ptr<Process> p = std::make_shared<Process>(buf[i]);
 
 			if (filter(*p)) {
@@ -167,13 +171,13 @@ const TCHAR* const Process::mainWindowTitle()
 			size_t bufLen = 256;
 			TCHAR* buf = new TCHAR[bufLen];
 
-			size_t textLen = GetWindowText(hwnd, buf, bufLen);
+			size_t textLen = GetWindowText(hwnd, buf, (int)bufLen);
 			while (textLen >= bufLen - 1) {
 				delete[] buf;
 				bufLen += increment;
 				buf = new TCHAR[bufLen];
 
-				textLen = GetWindowText(hwnd, buf, bufLen);
+				textLen = GetWindowText(hwnd, buf, (int)bufLen);
 			}
 
 			if (textLen > 0) {
@@ -186,4 +190,65 @@ const TCHAR* const Process::mainWindowTitle()
 	}
 
 	return m_mainWindowTitle;
+}
+
+#pragma comment(lib, "Rstrtmgr.lib")
+const bool Process::queryAllProcesses(std::vector<std::wstring>& lockedFiles, std::vector<std::shared_ptr<Process>>& output)
+{
+	bool returnVal = false;
+
+	DWORD dwSession;
+	WCHAR szSessionKey[CCH_RM_SESSION_KEY + 1] = { 0 };
+	DWORD dwError = RmStartSession(&dwSession, 0, szSessionKey);
+
+	if (dwError != ERROR_SUCCESS)
+		return false;
+
+	std::vector<LPCWSTR> filesArray;
+	for (auto& i : lockedFiles) {
+		filesArray.push_back(i.c_str());
+	}
+
+	dwError = RmRegisterResources(dwSession, (UINT)filesArray.size(), filesArray.data(),
+		0, NULL, 0, NULL);
+
+	if (dwError == ERROR_SUCCESS) {
+		DWORD dwReason;
+		UINT nProcInfoNeeded = 0;
+		UINT nProcInfo = 0;
+
+		dwError = RmGetList(dwSession, &nProcInfoNeeded, &nProcInfo, nullptr, &dwReason);
+
+		if (dwError == ERROR_SUCCESS) {
+			returnVal = true;
+		}
+		else if (dwError == ERROR_MORE_DATA) {
+			nProcInfo = nProcInfoNeeded;
+
+			std::vector<RM_PROCESS_INFO> result;
+			result.resize(nProcInfo);
+
+			dwError = RmGetList(dwSession, &nProcInfoNeeded,
+				&nProcInfo, result.data(), &dwReason);
+
+			returnVal = dwError == ERROR_SUCCESS;
+
+			std::set<DWORD> seenProcessIds;
+
+			for (auto& proc : result) {
+				if (seenProcessIds.count(proc.Process.dwProcessId))
+					continue;
+
+				seenProcessIds.emplace(proc.Process.dwProcessId);
+
+				std::shared_ptr<Process> pi = std::make_shared<Process>(proc.Process.dwProcessId);
+
+				output.push_back(pi);
+			}
+		}
+	}
+
+	RmEndSession(dwSession);
+
+	return returnVal;
 }
