@@ -100,6 +100,17 @@ void ProcessList::addPattern(const TCHAR* pattern)
 	update();
 }
 
+void ProcessList::addPatterns(const std::vector<std::wstring>& patterns)
+{
+	std::lock_guard<std::recursive_mutex> guard(m_mutex);
+
+	for (auto& pattern : patterns) {
+		m_patternList.emplace_back(pattern);
+	}
+
+	update();
+}
+
 bool ProcessList::match(const TCHAR* path)
 {
 	if (!path) {

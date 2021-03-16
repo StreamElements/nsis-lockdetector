@@ -21,6 +21,7 @@ public:
 	ProcessList(ProcessListMode mode);
 	~ProcessList();
 
+	void addPatterns(const std::vector<std::wstring>& patterns);
 	void addPattern(const TCHAR* pattern);
 
 	bool changed();
