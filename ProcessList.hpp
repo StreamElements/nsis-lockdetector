@@ -18,22 +18,17 @@ enum ProcessListMode
 class ProcessList
 {
 public:
-	ProcessList(ProcessListMode mode);
+	ProcessList(std::shared_ptr<ProcessListProvider> provider);
 	~ProcessList();
 
 	void addPatterns(const std::vector<std::wstring>& patterns);
 	void addPattern(const TCHAR* pattern);
 
 	bool changed();
-	void fill(std::vector<ProcessListItem>& output);
+	void fill(std::shared_ptr<ProcessListContext>& output);
 
 private:
-	bool match(const TCHAR* path);
 	bool update();
-
-	bool getProcessList(std::vector<ProcessListItem>& list);
-	bool getProcessListFromPsList(std::vector<ProcessListItem>& list);
-	bool getProcessListFromRestartManager(std::vector<ProcessListItem>& list);
 
 	static void thread(ProcessList* self);
 
@@ -52,5 +47,6 @@ private:
 
 	bool m_running;
 
-	ProcessListMode m_mode;
+	std::shared_ptr<ProcessListProvider> m_provider = nullptr;
+	std::shared_ptr<ProcessListContext> m_currentContext = nullptr;
 };
